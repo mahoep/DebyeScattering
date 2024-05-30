@@ -65,6 +65,13 @@ def angularFunctions(theta, N):
         
         
 def computeBessel(x, y, N):
+    """
+    This function pre computes all the permuations of spherical bessel functions 
+    outlined in (https://doi.org/10.1364/AO.49.002422). All the computations are
+    performed via recursion and never call scipy methods for bessel functions.
+    This formulation ensures stability for an arbitrary function order, n.
+
+    """
     nu = N + 0.5
 
     ajx = np.zeros((N+1,), dtype=np.complex128)
@@ -126,18 +133,18 @@ def computeBessel(x, y, N):
     
 if __name__ == "__main__":
     
-    m1 = 1.33+0.00j
-    m2 = np.complex128(1.0)
-    a = 10e-6
-    wavelength = 532e-9
-    k = (2*np.pi / wavelength)
+    m1 = 1.33+0.00j # index of refraction, supports complex arguments
+    m2 = np.complex128(1.0) # index of refraction of surrounding medium
+    a = 10e-6 # radius of particle
+    wavelength = 532e-9 # wavelength of light
+    k = (2*np.pi / wavelength) # wavenumber of light
 
-    x = 100
+    x = 59.05249 # size parameter
     y = m1 / m2 * x
-    # N = 250
-    N = 148
-    P = 500
-    Pc = 1
+    N = (int(x + 4.05 * x**(1/3)) + 2) # number of terms to sum over
+    N = 250
+    P = 500 # number of Debye modes to consider
+    Pc = 0 # Debye mode to consider by itself, must be 1 or greater
     
     theta = np.linspace(0,180,1801) * np.pi/180
 
@@ -156,7 +163,7 @@ if __name__ == "__main__":
     D1x, D1y, D3x, D3y, A13x, lnA13y = computeBessel(x, y, N)
         
     
-    for n in range(1,N):
+    for n in range(1,N+1):
         for i in range(0,2):
             if i == 0:
                 alpha = m1/m2
@@ -203,12 +210,18 @@ if __name__ == "__main__":
         S1 += (2*n+1)/(n*(n+1)) * (a1*pi + b1*tau)
         S2 += (2*n+1)/(n*(n+1)) * (a1*tau + b1*pi)
 
-        
-        if P > 1:
+            
+        if Pc == 0:
+            a1p = -0.5 + 0.5*R212[0]
+            b1p = -0.5 + 0.5*R212[1]
+            S1p += (2*n+1)/(n*(n+1)) * (a1p*pi + b1p*tau)
+            S2p += (2*n+1)/(n*(n+1)) * (a1p*tau + b1p*pi)
+        else:
             a1p = -0.5 * ray[0,Pc]
             b1p = -0.5 * ray[1,Pc]
             S1p += (2*n+1)/(n*(n+1)) * (a1p*pi + b1p*tau)
             S2p += (2*n+1)/(n*(n+1)) * (a1p*tau + b1p*pi)
+        
         
         #end loop
             
@@ -224,7 +237,7 @@ if __name__ == "__main__":
     
     mpl.rcParams['figure.dpi'] = 300
     plt.semilogy(theta/np.pi*180, S1a, linewidth=1)
-    # plt.semilogy(theta/np.pi*180, S1p, linewidth=1)
+    plt.semilogy(theta/np.pi*180, S1p, linewidth=1)
     plt.ylim([1e0, 1e8])
     plt.xlim([0,180])
 
