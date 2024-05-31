@@ -131,53 +131,62 @@ def computeBessel(x, y, N):
 
 
 
-    
-if __name__ == "__main__":
-    
-    theta = np.linspace(0,180,1801) * np.pi/180
-    r = np.arange(5,11,5, dtype=np.longcomplex)*1e-6
-    
-    wavelength = 532e-9 # wavelength of light
-    k = 2*np.pi / wavelength
-    
-    P = 200 # number of Debye modes to consider
-    Pc = -1 # Debye mode to consider by itself, must be 1 or greater, -1 is used as a debug flag
-    
-    
+def initialize(X, P, theta):
+     
     R212 = np.array([0,0], dtype=np.longcomplex)
     R121 = np.array([0,0], dtype=np.longcomplex)
     T1   = np.array([0,0], dtype=np.longcomplex)
     ray = np.zeros((2, P+1), dtype=np.longcomplex)
     
-    Q = np.zeros((np.size(r),2), dtype=np.longcomplex)
+    Q = np.zeros((np.size(X),2), dtype=np.longcomplex)
     
     S1 = np.zeros(np.shape(theta), dtype=np.longcomplex)
     S2 = np.zeros(np.shape(theta), dtype=np.longcomplex)
     S1p = np.zeros(np.shape(theta), dtype=np.longcomplex)
     S2p = np.zeros(np.shape(theta), dtype=np.longcomplex)
     
+    return R212, R121, T1, ray, S1, S2, S1p, S2p, Q
 
-    X = np.array([600,900])
+
+
+if __name__ == "__main__":
+    
+    import warnings
+    warnings.filterwarnings("error", category=RuntimeWarning)
+    
+    wavelength = 532e-9 # wavelength of light
+    k = 2*np.pi / wavelength
+    theta = np.linspace(0,180,1801) * np.pi/180
+    
+    
+    # X = np.array([100, 200, 300,400]) # set size parameter for layers, must be increasing
+    # M = np.array([1.333, 1.25, 1.2, 1.1, 1.0], dtype=np.longcomplex) # set index of refractions for layers, must be len(X)+1
+
+    
+    R = np.linspace(1e-6, 2e-6, 5)
+    # X = 2*np.pi*R/wavelength
+    X = np.array([55,65,75,85,90,95,100,105,110,115])
+    M = np.linspace(1.33, 1.33, np.size(X), dtype=np.complex128)
+    M = np.append(M, [1.0+0.0j])
+    
+    
+    P = 200 # number of Debye modes to consider
+    Pc = 0 # Debye mode to consider by itself, must be 1 or greater, -1 is used as a debug flag
+    
+    R212, R121, T1, ray, S1, S2, S1p, S2p, Q = initialize(X, P, theta)
+   
     N = (int(np.real(np.max(X)) + 4.05 * np.real(np.max(X))**(1/3)) + 2)
     
     for n in range(1,N+1):
         a1p = 1.
         b1p = 1.
         for l in range(0, np.size(X)):
-            if l == 0:
-                m1 = 1.333+0.00j # index of refraction, supports complex arguments
-                m2 = 1.20+0.00j # index of refraction of surrounding medium
-                x = X[0]
-            else:
-                m1 = 1.20+0.00j # index of refraction, supports complex arguments
-                m2 = 1.00+0.00j # index of refraction of surrounding medium
-                x = X[1]
-                
+            m1 = M[l]
+            m2 = M[l+1]
+            x = X[l]
             y = m1 / m2 * x
             
-            
             D1x, D1y, D3x, D3y, A13x, lnA13y = computeBessel(x, y, N)
-            
         
             for i in range(0,2):
                 if i == 0:
@@ -195,7 +204,7 @@ if __name__ == "__main__":
                 
                 if (np.real(lnA13y[n]) < 0.0) or (np.imag(m1) == 0.0):
                     A13y = np.exp(lnA13y[n])
-                    T1[i] = m1 * A13x[n] * A13y * u0 / (u33 - A13y*u31)**2
+                    T1[i] = m1/m2 * A13x[n] * A13y * u0 / (u33 - A13y*u31)**2
                     
                     umR212 = A13x[n] * (u13 - A13y*u11) / (u33 - A13y*u31)
                     umR121 = -A13y * u31 / (u33 - A13y*u31)
@@ -204,7 +213,7 @@ if __name__ == "__main__":
                     R121[i] = 1 + A13y * u31 / (u33 - A13y*u31)
                 else:
                     A13y = np.exp(-lnA13y[n])
-                    T1[i] = m1 * A13x[n] * A13y * u0 / (u33 - A13y*u31)**2
+                    T1[i] = m1/m2 * A13x[n] * A13y * u0 / (u33 - A13y*u31)**2
                     
                     umR212 = A13x[n] * (u13 - A13y*u11) / (u33 - A13y*u31)
                     umR121 = -A13y * u31 / (u33 - A13y*u31)
@@ -220,13 +229,8 @@ if __name__ == "__main__":
                 else:
                     for p in range(1,P+1):
                         ray[i,p] = (R121[i]*Q[l-1,i])**(p-1)
-                    Q[l,i] = R212[i] + T1[i]*Q[l-1,i] * np.sum(ray, axis=1)[i]
-                    #     ray[i,p] = T1[i]*Q[l-1,i] * (R121[i]*Q[l-1,i])**(p-1)
-                    # Q[l,i] = R212[i] +  np.sum(ray, axis=1)[i]
-                    
-                # if Pc == 0:
-                #     Q[l,i] = R212[i] + T1[i]*Q[l-1,i] * ray[i,Pc]
-                
+                    Q[l,i] = R212[1] + T1[i] * Q[l-1,i]/ (1 - R121[i]*Q[l-1,i]) 
+
                     
             if Pc == -1:
                 if l == 0:
@@ -242,9 +246,7 @@ if __name__ == "__main__":
             else:
                  a1p = -0.5 * ray[0,Pc]
                  b1p = -0.5 * ray[1,Pc]
-            
-        
-        
+
     
         a1 = 0.5*(1 - Q[l,0])
         b1 = 0.5*(1 - Q[l,1])
@@ -258,7 +260,6 @@ if __name__ == "__main__":
         S2p += (2*n+1)/(n*(n+1)) * (a1p*tau + b1p*pi)
 
     S1a = np.abs(S1)**2
-    S2a = np.abs(S2)**2
     S1pa = np.abs(S1p)**2
     S2pa = np.abs(S2p)**2
         
@@ -267,8 +268,9 @@ if __name__ == "__main__":
     import matplotlib as mpl
     
     mpl.rcParams['figure.dpi'] = 300
-    # plt.semilogy(theta/np.pi*180, S1a, linewidth=1)
+    plt.semilogy(theta/np.pi*180, S1a, linewidth=1)
     plt.semilogy(theta/np.pi*180, S1pa, linewidth=1)
-    plt.ylim([1e-1, 1e7])
-    plt.xlim([75,165])
+    # plt.ylim([1e-1, 1e7])
+    plt.xlim([0,180])
+
 #END
