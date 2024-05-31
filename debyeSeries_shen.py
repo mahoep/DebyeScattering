@@ -139,11 +139,11 @@ if __name__ == "__main__":
     wavelength = 532e-9 # wavelength of light
     k = (2*np.pi / wavelength) # wavenumber of light
 
-    x = 59.05249 # size parameter
+    x = 900 # size parameter
     y = m1 / m2 * x
     N = (int(x + 4.05 * x**(1/3)) + 2) # number of terms to sum over
-    N = 250
-    P = 500 # number of Debye modes to consider
+    # N = 150
+    P = 200 # number of Debye modes to consider
     Pc = 0 # Debye mode to consider by itself, must be 1 or greater
     
     theta = np.linspace(0,180,1801) * np.pi/180
@@ -180,7 +180,7 @@ if __name__ == "__main__":
             
             if (np.real(lnA13y[n]) < 0.0) or (np.imag(m1) == 0.0):
                 A13y = np.exp(lnA13y[n])
-                T1[i] = m1 * A13x[n] * A13y * u0 / (u33 - A13y*u31)**2
+                T1[i] = m1/m2 * A13x[n] * A13y * u0 / (u33 - A13y*u31)**2
                 
                 umR212 = A13x[n] * (u13 - A13y*u11) / (u33 - A13y*u31)
                 umR121 = -A13y * u31 / (u33 - A13y*u31)
@@ -189,7 +189,7 @@ if __name__ == "__main__":
                 R121[i] = 1 + A13y * u31 / (u33 - A13y*u31)
             else:
                 A13y = np.exp(-lnA13y[n])
-                T1[i] = m1 * A13x[n] * A13y * u0 / (u33 - A13y*u31)**2
+                T1[i] = m1/m2 * A13x[n] * A13y * u0 / (u33 - A13y*u31)**2
                 
                 umR212 = A13x[n] * (u13 - A13y*u11) / (u33 - A13y*u31)
                 umR121 = -A13y * u31 / (u33 - A13y*u31)
@@ -200,10 +200,8 @@ if __name__ == "__main__":
             for p in range(1,P+1):
                 ray[i,p] = T1[i] * (R121[i])**(p-1)
         raysum = np.sum(ray, axis=1)
-            
         a1 = 0.5*(1 - R212[0] - raysum[0])
         b1 = 0.5*(1 - R212[1] - raysum[1])
-        
         
         pi, tau = angularFunctions(theta, n)
 
@@ -221,8 +219,6 @@ if __name__ == "__main__":
             b1p = -0.5 * ray[1,Pc]
             S1p += (2*n+1)/(n*(n+1)) * (a1p*pi + b1p*tau)
             S2p += (2*n+1)/(n*(n+1)) * (a1p*tau + b1p*pi)
-        
-        
         #end loop
             
     S1a = np.abs(S1)**2
@@ -237,9 +233,10 @@ if __name__ == "__main__":
     
     mpl.rcParams['figure.dpi'] = 300
     plt.semilogy(theta/np.pi*180, S1a, linewidth=1)
-    plt.semilogy(theta/np.pi*180, S1p, linewidth=1)
-    plt.ylim([1e0, 1e8])
+    # plt.semilogy(theta/np.pi*180, S1p, linewidth=1)
+    # plt.ylim([1e-4, 1e7])
     plt.xlim([0,180])
+    plt.title('IR = '+str(round(np.real(m1),3))+', x = '+str(x))
 
                 
         
