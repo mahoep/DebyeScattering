@@ -4,12 +4,10 @@ Created on Wed May 29 13:24:04 2024
 
 @author: Matt
 
-This script computes the Debye series for a inhomogeneous sphere. 
-Alogrithim is derived from the following publications:
+This script computes the Debye series for a inhomogeneous sphere. Alogrithim is 
+derived from the following publication
 https://doi.org/10.1364/AO.49.002422
 and here https://doi.org/10.1364/AO.49.002422
-
-Mostly works. Separation of modes is not implemented yet.
 """
 
 
@@ -143,7 +141,7 @@ if __name__ == "__main__":
     k = 2*np.pi / wavelength
     
     P = 200 # number of Debye modes to consider
-    Pc = 0 # Debye mode to consider by itself, must be 1 or greater
+    Pc = -1 # Debye mode to consider by itself, must be 1 or greater, -1 is used as a debug flag
     
     
     R212 = np.array([0,0], dtype=np.longcomplex)
@@ -161,12 +159,13 @@ if __name__ == "__main__":
 
     X = np.array([600,900])
     N = (int(np.real(np.max(X)) + 4.05 * np.real(np.max(X))**(1/3)) + 2)
-    # N = 636
     
     for n in range(1,N+1):
+        a1p = 1.
+        b1p = 1.
         for l in range(0, np.size(X)):
             if l == 0:
-                m1 = 1.33+0.00j # index of refraction, supports complex arguments
+                m1 = 1.333+0.00j # index of refraction, supports complex arguments
                 m2 = 1.20+0.00j # index of refraction of surrounding medium
                 x = X[0]
             else:
@@ -224,30 +223,52 @@ if __name__ == "__main__":
                     Q[l,i] = R212[i] + T1[i]*Q[l-1,i] * np.sum(ray, axis=1)[i]
                     #     ray[i,p] = T1[i]*Q[l-1,i] * (R121[i]*Q[l-1,i])**(p-1)
                     # Q[l,i] = R212[i] +  np.sum(ray, axis=1)[i]
-
+                    
+                # if Pc == 0:
+                #     Q[l,i] = R212[i] + T1[i]*Q[l-1,i] * ray[i,Pc]
+                
+                    
+            if Pc == -1:
+                if l == 0:
+                    a1p *= R212[0]*R212[0]
+                    b1p *= R212[1]*R212[1]
+                if l == 1:
+                    a1p *= T1[0]*R121[0]
+                    b1p *= T1[1]*R121[1]
+            
+            if Pc == 0:
+                a1p = -0.5 + 0.5*R212[0]
+                b1p = -0.5 + 0.5*R212[1]
+            else:
+                 a1p = -0.5 * ray[0,Pc]
+                 b1p = -0.5 * ray[1,Pc]
+            
+        
+        
     
         a1 = 0.5*(1 - Q[l,0])
         b1 = 0.5*(1 - Q[l,1])
         
+
         pi, tau = angularFunctions(theta, n)
     
         S1 += (2*n+1)/(n*(n+1)) * (a1*pi + b1*tau)
         S2 += (2*n+1)/(n*(n+1)) * (a1*tau + b1*pi)
+        S1p += (2*n+1)/(n*(n+1)) * (a1p*pi + b1p*tau)
+        S2p += (2*n+1)/(n*(n+1)) * (a1p*tau + b1p*pi)
 
     S1a = np.abs(S1)**2
+    S2a = np.abs(S2)**2
+    S1pa = np.abs(S1p)**2
+    S2pa = np.abs(S2p)**2
         
     
     import matplotlib.pyplot as plt
     import matplotlib as mpl
     
     mpl.rcParams['figure.dpi'] = 300
-    plt.semilogy(theta/np.pi*180, S1a, linewidth=1)
-    # plt.semilogy(theta/np.pi*180, S1p, linewidth=1)
-    # plt.ylim([1e0, 1e8])
-    # plt.xlim([75,155])
-
-                
-        
-            
-                       
-            
+    # plt.semilogy(theta/np.pi*180, S1a, linewidth=1)
+    plt.semilogy(theta/np.pi*180, S1pa, linewidth=1)
+    plt.ylim([1e-1, 1e7])
+    plt.xlim([75,165])
+#END
