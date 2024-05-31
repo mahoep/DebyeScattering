@@ -133,13 +133,13 @@ def computeBessel(x, y, N):
     
 if __name__ == "__main__":
     
-    m1 = 1.33+0.00j # index of refraction, supports complex arguments
+    m1 = 1.333+0j # index of refraction, supports complex arguments
     m2 = np.complex128(1.0) # index of refraction of surrounding medium
     a = 10e-6 # radius of particle
     wavelength = 532e-9 # wavelength of light
     k = (2*np.pi / wavelength) # wavenumber of light
 
-    x = 900 # size parameter
+    x = 200 # size parameter
     y = m1 / m2 * x
     N = (int(x + 4.05 * x**(1/3)) + 2) # number of terms to sum over
     # N = 150
@@ -200,6 +200,7 @@ if __name__ == "__main__":
             for p in range(1,P+1):
                 ray[i,p] = T1[i] * (R121[i])**(p-1)
         raysum = np.sum(ray, axis=1)
+    
         a1 = 0.5*(1 - R212[0] - raysum[0])
         b1 = 0.5*(1 - R212[1] - raysum[1])
         
@@ -236,7 +237,7 @@ if __name__ == "__main__":
     # plt.semilogy(theta/np.pi*180, S1p, linewidth=1)
     # plt.ylim([1e-4, 1e7])
     plt.xlim([0,180])
-    plt.title('IR = '+str(round(np.real(m1),3))+', x = '+str(x))
+    plt.title('IR = '+str(round(np.real(m1),3))+', x = '+str(x)+' Homogeneous, no layers')
 
                 
         

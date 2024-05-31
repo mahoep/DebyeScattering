@@ -15,7 +15,7 @@ import numpy as np
 
 def angularFunctions(theta, N):
     """
-    Calculates the Angular functions using recurrence formulation
+    Calculates the Angular functions using recurrence formulation.
     Reference:
     https://opg.optica.org/ao/fulltext.cfm?uri=ao-49-13-2422&id=198319
     """
@@ -159,21 +159,14 @@ if __name__ == "__main__":
     theta = np.linspace(0,180,1801) * np.pi/180
     
     
-    # X = np.array([100, 200, 300,400]) # set size parameter for layers, must be increasing
-    # M = np.array([1.333, 1.25, 1.2, 1.1, 1.0], dtype=np.longcomplex) # set index of refractions for layers, must be len(X)+1
-
-    
-    R = np.linspace(1e-6, 2e-6, 5)
-    # X = 2*np.pi*R/wavelength
-    X = np.array([55,65,75,85,90,95,100,105,110,115])
-    M = np.linspace(1.33, 1.33, np.size(X), dtype=np.complex128)
-    M = np.append(M, [1.0+0.0j])
-    
+    X = np.array([600,900]) # set size parameter for layers, must be increasing
+    M = np.array([1.333, 1.20, 1.0], dtype=np.longcomplex) # set index of refractions for layers, must be len(X)+1
     
     P = 200 # number of Debye modes to consider
-    Pc = 0 # Debye mode to consider by itself, must be 1 or greater, -1 is used as a debug flag
+    Pc = -1 # Debye mode to consider by itself, must be 1 or greater, -1 is used as a debug flag
     
     R212, R121, T1, ray, S1, S2, S1p, S2p, Q = initialize(X, P, theta)
+    
    
     N = (int(np.real(np.max(X)) + 4.05 * np.real(np.max(X))**(1/3)) + 2)
     
@@ -186,7 +179,9 @@ if __name__ == "__main__":
             x = X[l]
             y = m1 / m2 * x
             
+            
             D1x, D1y, D3x, D3y, A13x, lnA13y = computeBessel(x, y, N)
+            
         
             for i in range(0,2):
                 if i == 0:
@@ -229,9 +224,9 @@ if __name__ == "__main__":
                 else:
                     for p in range(1,P+1):
                         ray[i,p] = (R121[i]*Q[l-1,i])**(p-1)
-                    Q[l,i] = R212[1] + T1[i] * Q[l-1,i]/ (1 - R121[i]*Q[l-1,i]) 
-
-                    
+                    Q[l,i] = R212[i] + T1[i]*Q[l-1,i] * np.sum(ray, axis=1)[i]    
+                
+                
             if Pc == -1:
                 if l == 0:
                     a1p *= R212[0]*R212[0]
@@ -240,7 +235,7 @@ if __name__ == "__main__":
                     a1p *= T1[0]*R121[0]
                     b1p *= T1[1]*R121[1]
             
-            if Pc == 0:
+            elif Pc == 0:
                 a1p = -0.5 + 0.5*R212[0]
                 b1p = -0.5 + 0.5*R212[1]
             else:
@@ -272,5 +267,11 @@ if __name__ == "__main__":
     plt.semilogy(theta/np.pi*180, S1pa, linewidth=1)
     # plt.ylim([1e-1, 1e7])
     plt.xlim([0,180])
+    plt.xlim([0,180])
+    plt.title('IR = '+str(round(np.real(m1),3))+', x = '+str(x)+', 2 layers')
 
-#END
+                
+        
+            
+                       
+            
