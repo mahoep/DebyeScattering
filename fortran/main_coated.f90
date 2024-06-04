@@ -5,29 +5,35 @@ program main_coated
     implicit none
     
     real(16), parameter :: pi_c=4.0_wp*atan(1.0_wp)
-    real(16), parameter   :: floorval=1.0e-10_wp
+    real(16), parameter   :: floorval=1.0e-15_wp
     real(16), allocatable :: theta(:), S1a(:), S1pa(:), XV(:)
     real(16), allocatable :: pi(:,:), tau(:,:)
-    complex(16) :: y, m1, m2, alpha, beta, raysum
+    complex(16) :: y, m1, m2, alpha, beta
     complex(16), allocatable :: D1x(:), D1y(:), D3x(:), D3y(:), A13x(:), lnA13y(:)
-    integer :: n, Nmx, i, nang, P, Pc, pee, l, layers
-    real(16) :: wavelength, k, x, en, check(2)
-    complex(16), allocatable :: S1(:), S2(:), S1p(:), S2p(:), ray(:,:), Q(:,:), M(:), Qp(:,:)
+    integer :: n, Nmx, i, nang, Pc, l, layers
+    real(16) :: wavelength, k, x, en, ii, check(2)
+    complex(16), allocatable :: S1(:), S2(:), S1p(:), S2p(:), Q(:,:), M(:), Qp(:,:)
     complex(16) :: u0, u11, u13, u31, u33, A13y, umR121, umR212, a1, b1, R121(2), R212(2), T1(2)
-    complex(16) :: a1p, b1p
-    real(16) :: start, finish
+    complex(16) :: a1p, b1p, ray(2)
 
 
-    layers = 1
+    layers = 100
     nang = 1801
 
     allocate(M(layers+1))
-    M = 1.33_wp
+    
+    ! M = 1.33_wp
+    ! M(1) = 1.35_wp
+    ! do i = 1,layers
+    !     ii = real(i,kind=wp)
+    !     M(i) = 1.45_wp -1.05e-9*(i)**(4.0_wp) + 3.23e-7*(i)**(3.0_wp) - 3.14e-05*(i)**(2.0_wp) - 7.29e-05*(i)
+    ! end do
     M(size(M)) = 1.0_wp
+    
 
     allocate(XV(layers))
     do i = 1,layers
-        XV(i) = 100.0_wp*i
+        XV(i) = 1.0_wp*i
     end do
 
     x = XV(size(XV))
@@ -35,7 +41,6 @@ program main_coated
     wavelength = 532*10**(-9.0_wp)
     k = 2*pi_c / wavelength
 
-    P = 200
     Pc = 1
     allocate(theta(nang), S1(nang), S1a(nang), S1p(nang), S1pa(nang))
     do i = 1, nang
@@ -47,7 +52,7 @@ program main_coated
     allocate(D1x(0:Nmx), D1y(0:Nmx), D3x(0:Nmx), D3y(0:Nmx), A13x(0:Nmx), lnA13y(0:Nmx))
     
 
-    allocate(ray(2,P), Q(size(XV), 2), Qp(size(XV), 2))
+    allocate(Q(size(XV), 2), Qp(size(XV), 2))
 
     do n  = 1, Nmx
         a1p = 1.0_wp
@@ -96,41 +101,19 @@ program main_coated
                     R212(i) = 1.0_wp - A13x(n) * (u13 - A13y*u11) / (u33 - A13y*u31)
                     R121(i) = 1.0_wp + A13y * u31 / (u33 - A13y*u31)
                 end if
-
-                if (l.eq.1) then
-                    ! do pee = 1, P
-                    !     check(1) = abs(real(T1(i) * (R121(i))**real(pee-1,kind=wp)))
-                    !     check(2) = abs(aimag(T1(i) * (R121(i))**real(pee-1,kind=wp)))
-
-                    !     if  (check(1).le.floorval .or. isnan(check(1))) then
-                    !         ray(i, pee)%re = 0.0_wp
-                    !     else if (check(2).le.floorval .or. isnan(check(2))) then
-                    !         ray(i, pee)%im = 0.0_wp
-                    !     else
-                            ray(i, Pc) = T1(i) * (R121(i))**real(Pc-1,kind=wp)
-                    !     end if        
-                    ! end do
-                    ! raysum = sum(ray(i,:))
-                    Q(l,i) = R212(i) +  T1(i) / (1.0_wp - R121(i))
-                    Qp(l,i) = ray(i, Pc) 
-                else
-                    ! do pee = 1, P
-                    !     check(1) = abs(real((R121(i) * Q(l-1,i))**real(pee-1,kind=wp)))
-                    !     check(2) = abs(aimag((R121(i) * Q(l-1,i))**real(pee-1,kind=wp)))
-
-                    !     if  (check(1).le.floorval .or. isnan(check(1))) then
-                    !         ray(i, pee)%re = 0.0_wp
-                    !     else if (check(2).le.floorval .or. isnan(check(2))) then
-                    !         ray(i, pee)%im = 0.0_wp
-                    !     else
-                            ray(i, Pc) = (R121(i) * Qp(l-1,i))**real(Pc-1,kind=wp)
-                    !     end if      
-                    ! end do
-                    ! raysum = sum(ray(i,:))
-                    Q(l,i) = R212(i) +  (T1(i) * Q(l-1,i)) / (1.0_wp - R121(i) * Q(l-1,i))
-                    Qp(l,i) = ray(i, Pc) * T1(i) * Q(l-1,i)
-                end if
             end do  
+
+            if (l.eq.1) then
+                ray = T1 * (R121)**real(Pc-1,kind=wp)
+
+                Q(l,:) = R212 +  T1 / (1.0_wp - R121)
+                Qp(l,:) = ray
+            else
+                ray = (R121 * Q(l-1,:))**real(Pc-1,kind=wp)
+
+                Q(l,:) = R212 +  (T1 * Q(l-1,:)) / (1.0_wp - R121 * Q(l-1,:))
+                Qp(l,:) = ray * T1 * Q(l-1,:)
+            end if
         end do  
 
         if (Pc.eq.0) then
