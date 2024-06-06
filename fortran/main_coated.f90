@@ -11,37 +11,39 @@ program main_coated
     complex(16) :: y, m1, m2, alpha, beta
     complex(16), allocatable :: D1x(:), D1y(:), D3x(:), D3y(:), A13x(:), lnA13y(:)
     integer :: n, Nmx, i, nang, Pc, l, layers
-    real(16) :: wavelength, k, x, en, ii, check(2)
+    real(16) :: wavelength, k, x, en, ii, check(2), X_max
     complex(16), allocatable :: S1(:), S2(:), S1p(:), S2p(:), Q(:,:), M(:), Qp(:,:)
     complex(16) :: u0, u11, u13, u31, u33, A13y, umR121, umR212, a1, b1, R121(2), R212(2), T1(2)
     complex(16) :: a1p, b1p, ray(2)
 
 
-    layers = 100
+    layers = 500
     nang = 1801
-
-    allocate(M(layers+1))
-    
-    ! M = 1.33_wp
-    ! M(1) = 1.35_wp
-    ! do i = 1,layers
-    !     ii = real(i,kind=wp)
-    !     M(i) = 1.45_wp -1.05e-9*(i)**(4.0_wp) + 3.23e-7*(i)**(3.0_wp) - 3.14e-05*(i)**(2.0_wp) - 7.29e-05*(i)
-    ! end do
-    M(size(M)) = 1.0_wp
-    
+    X_max = 100.0
 
     allocate(XV(layers))
     do i = 1,layers
-        XV(i) = 1.0_wp*i
+        ii = real(i,kind=wp)
+        XV(i) = X_max / real(layers,kind=wp) * ii
     end do
+
+
+    allocate(M(layers+1))
+    ! M = 1.45_wp
+    ! M(1) = 1.35_wp
+    do i = 1,layers
+        ii = XV(i) / XV(size(XV)) 
+        M(i) = 1.4529_wp + 0.1076_wp*((ii)**(3.0_wp)) - 0.1768_wp*((ii)**(2.0_wp)) - 0.0348_wp*(ii)
+    end do
+    M(size(M)) = 1.0_wp
+    
 
     x = XV(size(XV))
     Nmx = int( x + 4.05_wp*(x**(1.0_wp/3.0_wp)) + 2.0_wp )
     wavelength = 532*10**(-9.0_wp)
     k = 2*pi_c / wavelength
 
-    Pc = 1
+    Pc = 3
     allocate(theta(nang), S1(nang), S1a(nang), S1p(nang), S1pa(nang))
     do i = 1, nang
       theta(i) = real((i - 1),kind=wp) * pi_c / real(nang-1,kind=wp)
@@ -142,10 +144,12 @@ program main_coated
     open(10,file="output.dat",status="unknown")
     write(10,*)
     write(10,*) "ang (deg)"," S1", "S1(P=Pc)"
-
     do i=1,nang
       write(10,*) theta(i),S1a(i),S1pa(i)
     enddo
+    ! do i = 1,layers
+    !     write(10,*) M(i)%re
+    ! end do
     write(10,*)
     close(10)
     

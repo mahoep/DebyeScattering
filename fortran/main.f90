@@ -6,19 +6,20 @@ program main
     
     real(16), parameter :: pi_c=4.0_wp*atan(1.0_wp)
     real(16), parameter   :: floorval=1.0e-50_wp
-    real(16), allocatable :: theta(:), S1a(:)
+    real(16), allocatable :: theta(:), S1a(:), S1pa(:)
     real(16), allocatable :: pi(:,:), tau(:,:)
     complex(16) :: y, m1, m2, alpha, beta
     complex(16), allocatable :: D1x(:), D1y(:), D3x(:), D3y(:), A13x(:), lnA13y(:)
     integer :: n, Nmx, i, nang, P, Pc, pee
     real(16) :: wavelength, k, x, en, check
-    complex(16), allocatable :: S1(:), S2(:), ray(:,:)
+    complex(16), allocatable :: S1(:), S2(:), ray(:,:), S1p(:), S2p(:)
     complex(16) :: u0, u11, u13, u31, u33, A13y, umR121, umR212, a1, b1, raysum(2), R121(2), R212(2), T1(2)
+    complex(16) :: a1p, b1p
     real(16) :: start, finish
 
     nang = 1801
-    m1 = (1.333, 0)
-    m2 = (1.333, 0)
+    m1 = (1.45, 0)
+    m2 = (1.0, 0)
 
     x = 100
     y = x * m1/m2
@@ -26,9 +27,9 @@ program main
     wavelength = 532*10**(-9.0_wp)
     k = 2*pi_c / wavelength
 
-    P = 200 
-    Pc = 0
-    allocate(theta(nang), S1(nang), S1a(nang))
+    P = 200
+    Pc = 2
+    allocate(theta(nang), S1(nang), S1a(nang), S1p(nang), S1pa(nang))
     do i = 1, nang
       theta(i) = real((i - 1),kind=wp) * pi_c / real(nang-1,kind=wp)
     end do
@@ -90,6 +91,14 @@ program main
       end do  
 
       raysum = sum(ray, DIM=2)
+
+      if (Pc.eq.0) then
+        a1p = 0.5_wp - 0.5_wp*R212(1)
+        b1p = 0.5_wp - 0.5_wp*R212(2)
+      else
+        a1p =  -0.5_wp * ray(1, Pc)
+        b1p =  -0.5_wp * ray(2, Pc)
+      end if
       
       a1 = 0.5_wp * ( 1.0_wp - R212(1) - raysum(1) )
       b1 = 0.5_wp * ( 1.0_wp - R212(2) - raysum(2) )
@@ -97,17 +106,21 @@ program main
       S1 = S1 + (2.0_wp*en+1.0_wp)/(en*(en+1.0_wp)) * (a1*pi(n,:) + b1*tau(n,:))
       S2 = S1 + (2.0_wp*en+1.0_wp)/(en*(en+1.0_wp)) * (a1*tau(n,:) + b1*pi(n,:))
 
+      S1p = S1p + (2.0_wp*en+1.0_wp)/(en*(en+1.0_wp)) * (a1p*pi(n,:) + b1p*tau(n,:))
+        ! S2p = S2p + (2.0_wp*en+1.0_wp)/(en*(en+1.0_wp)) * (a1p*tau(n,:) + b1p*pi(n,:))
+
     end do
 
     S1a = abs(S1)**2.0_wp
+    S1pa = abs(S1p)**2.0_wp
 
     write(*,*) "writing... output.dat"
     open(10,file="output.dat",status="unknown")
     write(10,*)
-    write(10,*) "ang (deg)"," S1"
+    write(10,*) "ang (deg)"," S1", " S1p"
 
     do i=1,nang
-      write(10,*) theta(i),S1a(i)
+      write(10,*) theta(i),S1a(i),S1pa(i)
     enddo
     write(10,*)
     close(10)
